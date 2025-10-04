@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Flappy Building Game (Improved Collision)</title>
+  <style>
+    body {
+      margin: 0;
+      overflow: hidden;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      background: linear-gradient(to bottom, #87ceeb, #ffffff);
+    }
+    canvas {
+      background: linear-gradient(to bottom, #87ceeb, #ffffff);
+      border: 2px solid #333;
+      border-radius: 10px;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="gameCanvas" width="400" height="600"></canvas>
+  <script>
+    const canvas = document.getElementById("gameCanvas");
+    const ctx = canvas.getContext("2d");
+
+    let birdImg = new Image();
+    birdImg.src = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAABgUlEQVR4nO3bsUoDQRSA4W8nIZ0skkpykJUfL+hmF/gcH1B7/gplP5E2iQjTslSwFu6OcGufmfnMZs6FZGZmZmZmZh/XJpOqVRRPiPQyucHXODpgZzGqJvO0ZBNdjBdoD0+CfyBlXfJj+8gEJsDhuwCLi5TbPja6Oa0OZJBSTSiSwD6vCnD0ANdmMvblJ/5Fl8HwMtReBz4s2cAKxwCz0dyI3dgB8I7E9oAnA0sd+ABaRwg8gH1l+U5kpOaAKoL6Jh8DyzfxQFc0Y2DT9wu38qQKrWf8hnAaoGlJK1/0PgWlFK1V65hC6kxkP4AVK2FkGgyHIDyMphQREOZh8A8QjsGCoNSM1OPmF1/Uh9uzfpN7P3tPXb22y/Z4fTnoqk+7G6txH/wADpD1/zfYJXspMxLyMPDMBwzz/DIpJHxA9KAAAAAElFTkSuQmCC";
+
+    let bird = {
+      x: 50,
+      y: 150,
+      width: 80,
+      height: 80,
+      gravity: 0.6,
+      lift: -10,
+      velocity: 0
+    };
+
+    let buildings = [];
+    let frame = 0;
+    let score = 0;
+    let gameOver = false;
+
+    function drawBird() {
+      ctx.drawImage(birdImg, bird.x, bird.y, bird.width, bird.height);
+    }
+
+    function drawBuildings() {
+      for (let i = 0; i < buildings.length; i++) {
+        let b = buildings[i];
+        ctx.fillStyle = "#555"; 
+        ctx.fillRect(b.x, 0, b.width, b.top); 
+        ctx.fillRect(b.x, canvas.height - b.bottom, b.width, b.bottom); 
+
+        ctx.fillStyle = "#ddd";
+        for (let y = 10; y < b.top - 10; y += 25) {
+          for (let x = b.x + 5; x < b.x + b.width - 10; x += 20) {
+            ctx.fillRect(x, y, 10, 10);
+          }
+        }
+        for (let y = canvas.height - b.bottom + 10; y < canvas.height - 10; y += 25) {
+          for (let x = b.x + 5; x < b.x + b.width - 10; x += 20) {
+            ctx.fillRect(x, y, 10, 10);
+          }
+        }
+      }
+    }
+
+    function drawScore() {
+      ctx.fillStyle = "#000";
+      ctx.font = "24px Arial";
+      ctx.fillText("Score: " + score, 10, 30);
+    }
+
+    function checkCollision(bird, b) {
+      let birdBox = {
+        x: bird.x + bird.width * 0.2,
+        y: bird.y + bird.height * 0.2,
+        w: bird.width * 0.6,
+        h: bird.height * 0.6
+      };
+
+      let topBox = { x: b.x, y: 0, w: b.width, h: b.top };
+      let bottomBox = { x: b.x, y: canvas.height - b.bottom, w: b.width, h: b.bottom };
+
+      function overlap(a, c) {
+        return (
+          a.x < c.x + c.w &&
+          a.x + a.w > c.x &&
+          a.y < c.y + c.h &&
+          a.y + a.h > c.y
+        );
+      }
+
+      return overlap(birdBox, topBox) || overlap(birdBox, bottomBox);
+    }
+
+    function update() {
+      if (gameOver) return;
+
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      bird.velocity += bird.gravity;
+      bird.y += bird.velocity;
+
+      if (bird.y + bird.height > canvas.height || bird.y < 0) {
+        gameOver = true;
+      }
+
+      if (frame % 100 === 0) {
+        let top = Math.random() * (canvas.height / 2);
+        let bottom = canvas.height - top - 160;
+        buildings.push({ x: canvas.width, width: 70, top: top, bottom: bottom });
+      }
+
+      for (let i = 0; i < buildings.length; i++) {
+        let b = buildings[i];
+        b.x -= 2;
+
+        if (checkCollision(bird, b)) {
+          gameOver = true;
+        }
+
+        if (b.x + b.width < bird.x && !b.passed) {
+          score++;
+          b.passed = true;
+        }
+      }
+
+      buildings = buildings.filter(b => b.x + b.width > 0);
+
+      drawBird();
+      drawBuildings();
+      drawScore();
+
+      frame++;
+
+      if (!gameOver) requestAnimationFrame(update);
+      else {
+        ctx.fillStyle = "red";
+        ctx.font = "40px Arial";
+        ctx.fillText("Game Over", canvas.width / 2 - 100, canvas.height / 2);
+        ctx.font = "20px Arial";
+        ctx.fillText("Klik/tekan untuk restart", canvas.width / 2 - 120, canvas.height / 2 + 40);
+      }
+    }
+
+    function flap() {
+      if (!gameOver) {
+        bird.velocity = bird.lift;
+      } else {
+        bird.y = 150;
+        bird.velocity = 0;
+        buildings = [];
+        score = 0;
+        frame = 0;
+        gameOver = false;
+        update();
+      }
+    }
+
+    window.addEventListener("keydown", flap);
+    window.addEventListener("mousedown", flap);
+    window.addEventListener("touchstart", flap);
+
+    birdImg.onload = () => {
+      update();
+    };
+  </script>
+</body>
+</html>
